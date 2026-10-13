@@ -1,0 +1,59 @@
+[Unit]
+Description=LAN Debug Server (JLink Remote + RTT + Serial Bridge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pickingchip
+Group=pickingchip
+SupplementaryGroups=plugdev dialout
+
+WorkingDirectory=/home/pickingchip/LAN-Debug-Server
+
+Environment="HOME=/home/pickingchip"
+Environment="USER=pickingchip"
+Environment="LANG=C.UTF-8"
+Environment="LC_ALL=C.UTF-8"
+Environment="PATH=/home/pickingchip/LAN-Debug-Server/.venv/bin:/opt/SEGGER/JLink:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="LD_LIBRARY_PATH=/opt/SEGGER/JLink"
+Environment="PYTHONUNBUFFERED=1"
+Environment="TERM=xterm-256color"
+
+# 启动前清残留
+ExecStartPre=-/usr/bin/pkill -9 -f gunicorn.*app:app
+ExecStartPre=-/usr/bin/pkill -9 -f JLinkRemoteServerCLExe
+ExecStartPre=-/usr/bin/pkill -9 -f JLinkRTTLoggerExe
+ExecStartPre=-/usr/bin/pkill -9 -f JLinkExe
+ExecStartPre=/bin/sleep 1
+
+# === 关键这一行：用 script 给 bash.sh 套一个真实 PTY ===
+# -q 不打印 Script started/done 信息
+# -e 透传退出码给 systemd
+# -f 每次写都 flush，不缓冲
+# -c 要执行的命令
+# 末尾的 /dev/null 是 typescript 文件，丢弃
+ExecStart=/usr/bin/script -qefc "/bin/bash /home/pickingchip/LAN-Debug-Server/bash.sh" /dev/null
+
+ExecStop=/bin/kill -TERM $MAINPID
+ExecStopPost=-/usr/bin/pkill -f JLinkRemoteServerCLExe
+ExecStopPost=-/usr/bin/pkill -f JLinkRTTLoggerExe
+ExecStopPost=-/usr/bin/pkill -f JLinkExe
+TimeoutStopSec=15
+
+KillMode=mixed
+KillSignal=SIGTERM
+SendSIGKILL=yes
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lan-debug-server
+
+NoNewPrivileges=yes
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

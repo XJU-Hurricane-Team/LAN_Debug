@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JlinkDebug</title>
+    <link rel="icon" href="/static/logo-banner.png" type="image/png">
+    <!-- 在样式表加载前先把主题应用到 <html>，避免刷新时白闪 -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                if (saved === 'dark' || saved === 'light') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <!-- 艺术字体（HÜRRICANE 风格的工业粗体），离线时回落到 Impact / Arial Black -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet" type="text/css"/>
+</head>
+
+
+<body>
+<header class="topbar">
+    <div class="topbar-spacer"></div>
+    <div class="topbar-brand">
+        <h1 class="brand-title">
+            <span class="brand-main">HURRICANE</span>
+            <span class="brand-sub">LAN-Debug-Server</span>
+        </h1>
+    </div>
+    <div class="topbar-actions">
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换日间/夜间模式" title="切换日间/夜间模式">
+            <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>
+        </button>
+    </div>
+</header>
+
+<main class="dashboard">
+    <section class="card" id="jlink-card">
+        <header class="card-header">
+            <h2>JLink 设备</h2>
+            <button class="btn btn-primary btn-sm" onclick="refreshJlinkList()">刷新</button>
+        </header>
+        <div class="row-container" id="jlink-table">
+            <div class="row-title">
+                <div class="column">序列号</div>
+                <div class="column">调试端口</div>
+                <div class="column">串口端口</div>
+            </div>
+        </div>
+        <div class="custom-flash-box">
+            <h3>Custom CLI 远程烧录</h3>
+            <p class="config-note">EIDE 烧录器选择 Custom CLI，将对应命令填入烧录配置。</p>
+            <div class="flash-command-header"><span>Windows</span><button id="flash-copy-windows" class="btn btn-outline btn-sm" onclick="copyCustomFlash('windows')">复制命令</button></div>
+            <div class="flash-command"><code id="flash-command-windows">python "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"</code></div>
+            <div class="flash-command-header"><span>Linux</span><button id="flash-copy-linux" class="btn btn-outline btn-sm" onclick="copyCustomFlash('linux')">复制命令</button></div>
+            <div class="flash-command"><code id="flash-command-linux">python3 "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"</code></div>
+            <p class="config-note">先将 Debug_LAN 工具包和下载的配置保存到客户端工程。此配置用于 EIDE 单独烧录；F5 调试仍选择 Debug: JLINK LAN。不要选择全片擦除，工具未配置该命令。</p>
+            <p class="config-note config-validation" id="flash-copy-status" role="status"></p>
+        </div>
+    </section>
+
+    <section class="card" id="config-card">
+        <header class="card-header">
+            <h2>客户端连接配置</h2>
+        </header>
+        <div class="config-box">
+            <div class="config-empty" id="config-empty">请点击左侧 JLink 设备查看连接配置</div>
+            <div id="config" style="display: none;">
+                <div class="config-fields">
+                    <div>
+                        <label for="device-input">设备型号 <span class="field-note">手动填写，自动记忆</span></label>
+                        <div class="code-container device-row">
+                            <input id="device-input" class="device-input" type="text" placeholder="如 STM32G474VE" autocomplete="off" spellcheck="false">
+                            <span class="device-hint" id="device-hint"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="server-input">服务器名称 / IPv4</label>
+                        <div class="code-container device-row">
+                            <input id="server-input" class="device-input" type="text" autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
+                </div>
+                <p class="config-note" id="server-source"></p>
+                <details class="config-advanced">
+                    <summary>高级设置 <span class="field-note">接口与速度</span></summary>
+                    <div class="config-fields">
+                        <div><label for="interface-input">接口</label><select id="interface-input" class="config-select"><option>SWD</option><option>JTAG</option><option>cJTAG</option><option>FINE</option></select></div>
+                        <div><label for="speed-input">速度（kHz）</label><input id="speed-input" class="config-select" type="number" min="1" max="100000" value="8000"></div>
+                    </div>
+                    <p class="config-note">用于工程烧录与调试；网页 RTT 沿用服务端设置。连接不稳定可降至 4000 或 1000。</p>
+                </details>
+                <div class="config-preview-header">
+                    <code>Debug_LAN/remote-jlink.json</code>
+                    <div class="config-actions">
+                        <button id="config-copy-btn" class="btn btn-primary btn-sm" onclick="copyRemoteConfig()" disabled>复制</button>
+                        <button id="config-download-btn" class="btn btn-outline btn-sm" onclick="downloadRemoteConfig()" disabled>下载</button>
+                    </div>
+                </div>
+                <pre class="config-preview"><code id="remote-config"></code></pre>
+                <p class="config-note config-validation" id="config-validation" role="status"></p>
+                <div class="config-footnote">
+                    下载后保存到客户端工程的 <code>Debug_LAN/remote-jlink.json</code>。<code>launch.json</code> 仍需手动核对芯片、ELF 与 SVD 路径；首次接入请合并工具包的 <code>vscode/</code> 示例，F5 选择 <code>Debug: JLINK LAN</code>。已有自定义 <code>JLinkExe</code> 路径请保留。
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card" id="rtt-panel">
+        <div class="rtt-header">
+            <span class="rtt-title">RTT 输出</span>
+            <span class="rtt-status" id="rtt-status">● 未启动</span>
+            <span class="rtt-active-sn" id="rtt-active-sn"></span>
+            <div class="rtt-actions">
+                <button class="rtt-icon-btn" id="rtt-expand-btn" onclick="toggleRTTExpanded()" aria-pressed="false"><span>放大</span></button>
+                <button class="rtt-toggle-btn" id="rtt-toggle-btn" onclick="toggleRTT()" data-state="idle" disabled>
+                    <svg class="icon-play" viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20"/></svg>
+                    <svg class="icon-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    <span class="btn-label">开始 RTT</span>
+                </button>
+                <button class="rtt-icon-btn" id="rtt-download-btn" onclick="downloadRTTLog()" title="下载完整 rtt_<sn>.log（自项目启动以来）" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14"/></svg>
+                    <span>下载</span>
+                </button>
+                <button class="rtt-icon-btn" onclick="clearRTT()" title="清空页面显示，不影响后台日志文件">
+                    <span>清空</span>
+                </button>
+            </div>
+        </div>
+        <div class="rtt-console" id="rtt-console">
+            <span class="rtt-placeholder">请点击 JLink 列表中的设备以选中并查看其 RTT 数据...</span>
+        </div>
+    </section>
+</main>
+
+<script>
+    const serverIdentity = {{ server_identity | tojson }};
+    // ============================================================
+    // 主题切换
+    // ============================================================
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+    }
+
+    // ============================================================
+    // 复制按钮
+    // ============================================================
+    function defaultServerName() {
+        if (serverIdentity.source === 'avahi-runtime' && serverIdentity.name) {
+            return [serverIdentity.name, '来自 Avahi 当前发布名称；客户端需支持该名称解析。'];
+        }
+        const host = window.location.hostname;
+        if (host.endsWith('.local')) return [host, '采用当前网页访问名称。'];
+        if (serverIdentity.name) {
+            return [serverIdentity.name, '来自 Avahi 配置文件，未核实当前发布状态；名称冲突时请核对实际名称。'];
+        }
+        return [lastJlinkData.ip || host, '未读取到 Avahi 名称，采用服务器 IPv4；可手动填写实际 .local 名称。'];
+    }
+
+    function getRemoteConfig() {
+        const info = lastJlinkData[displayedSN];
+        const port = info && info.server;
+        const name = document.getElementById('server-input').value.trim();
+        const device = document.getElementById('device-input').value.trim();
+        const speed = Number(document.getElementById('speed-input').value);
+        const validName = name.length <= 253 && name.split('.').every(
+            label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+        let error = '';
+        if (!Number.isInteger(port) || port < 1 || port > 65535) error = '该设备没有有效的远程探针端口，无法生成工程配置。';
+        else if (!device || /[\r\n"]/.test(device)) error = '请填写有效的芯片型号，与工程调试配置保持一致。';
+        else if (!validName) error = '请填写服务器名称或 IPv4，不包含 http:// 或端口。';
+        else if (!Number.isInteger(speed) || speed < 1 || speed > 100000) error = '速度须为 1–100000 的整数。';
+        return {
+            error,
+            config: { ServerName: name, Port: Number.isInteger(port) ? port : null, Device: device,
+                Interface: document.getElementById('interface-input').value, SpeedKHz: speed, JLinkExe: '' }
+        };
+    }
+
+    function updateRemoteConfig() {
+        const result = getRemoteConfig();
+        document.getElementById('remote-config').textContent = JSON.stringify(result.config, null, 2);
+        const status = document.getElementById('config-validation');
+        status.textContent = result.error;
+        document.getElementById('config-copy-btn').disabled = !!result.error;
+        document.getElementById('config-download-btn').disabled = !!result.error;
+        return result;
+    }
+
+    async function copyText(textId, buttonId, statusId, label) {
+        const text = document.getElementById(textId).textContent;
+        const button = document.getElementById(buttonId);
+        const status = document.getElementById(statusId);
+        status.textContent = '';
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const area = document.createElement('textarea');
+                area.value = text;
+                area.style.position = 'fixed';
+                document.body.appendChild(area);
+                try {
+                    area.select();
+                    if (!document.execCommand('copy')) throw new Error('copy failed');
+                } finally { area.remove(); }
+            }
+            button.textContent = '已复制';
+        } catch (error) {
+            status.textContent = '复制失败，请选中文本手动复制。';
+        }
+        clearTimeout(button._resetTimer);
+        button._resetTimer = setTimeout(() => { button.textContent = label; }, 1800);
+    }
+
+    async function copyRemoteConfig() {
+        if (updateRemoteConfig().error) return;
+        await copyText('remote-config', 'config-copy-btn', 'config-validation', '复制');
+    }
+
+    async function copyCustomFlash(platform) {
+        await copyText(`flash-command-${platform}`, `flash-copy-${platform}`, 'flash-copy-status', '复制命令');
+    }
+
+    function downloadRemoteConfig() {
+        if (updateRemoteConfig().error) return;
+        const blob = new Blob([document.getElementById('remote-config').textContent + '\n'], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'remote-jlink.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function toggleRTTExpanded() {
+        const expanded = document.body.classList.toggle('rtt-expanded');
+        const button = document.getElementById('rtt-expand-btn');
+        button.setAttribute('aria-pressed', String(expanded));
+        button.querySelector('span').textContent = expanded ? '还原' : '放大';
+    }
+
+    // ============================================================
+    // 全局状态
+    // ============================================================
+    // 当前在 RTT 卡片显示的 SN（仅控制"显示哪个"，不影响后台 RTT 进程）
+    let displayedSN = null;
+    // 显示中 SN 的 RTT 是否在跑（由后端 polling 同步）
+    let rttCurrentlyActive = false;
+    // 显示中 SN 已拿到的行数（用于增量轮询）
+    let rttLineIndex = 0;
+    // 轮询定时器
+    let rttPollTimer = null;
+    // 最近一次 /get_jlink_list 的响应缓存（包含 ip + 各 SN 的 device/server/serial/rtt_active）
+    let lastJlinkData = {};
+
+    // ============================================================
+    // JLink 列表
+    // ============================================================
+    function refreshJlinkList() {
+        fetch('/get_jlink_list')
+            .then(response => response.json())
+            .then(data => {
+                lastJlinkData = data;
+                const tableEl = document.getElementById('jlink-table');
+                tableEl.innerHTML = `<div class="row-title"><div class="column">序列号</div><div class="column">调试端口</div><div class="column">串口端口</div></div>`;
+
+                let displayedStillExists = false;
+                for (const sn in data) {
+                    if (sn === 'ip') continue;
+                    const info = data[sn];
+
+                    const row = document.createElement('div');
+                    row.className = 'row';
+                    if (sn === displayedSN) row.classList.add('selected');
+                    if (info.rtt_active) row.classList.add('recording');
+                    row.setAttribute('sn', sn);
+                    row.innerHTML =
+                        `<div class="column">${sn}${info.rtt_active ? ' <span class="row-rec-dot" title="RTT 记录中">●</span>' : ''}</div>` +
+                        `<div class="column">${info.server ?? '—'}</div>` +
+                        `<div class="column">${info.serial ?? '—'}</div>`;
+                    row.addEventListener('click', () => selectJlink(sn));
+                    tableEl.appendChild(row);
+
+                    if (sn === displayedSN) displayedStillExists = true;
+                }
+
+                if (displayedSN && !displayedStillExists) {
+                    // 当前显示的 JLink 被拔掉了
+                    clearDisplay();
+                } else if (displayedSN) {
+                    // 同步配置（device 可能在别处变了）
+                    syncDeviceInputFromCache();
+                    updateRemoteConfig();
+                }
+            })
+            .catch(error => console.error('refresh error:', error));
+    }
+
+    function selectJlink(sn) {
+        if (displayedSN === sn) return;
+
+        displayedSN = sn;
+        rttLineIndex = 0;
+        rttCurrentlyActive = false;
+
+        // 高亮选中行
+        document.querySelectorAll('#jlink-table .row').forEach(r => {
+            r.classList.toggle('selected', r.getAttribute('sn') === sn);
+        });
+
+        // 显示连接配置区
+        showConfigForSN(sn);
+
+        // 切换 RTT 显示
+        document.getElementById('rtt-console').innerHTML = '';
+        setActiveSN(sn);
+        setStatusUI('idle');
+
+        // 立即拉一次（更新 active 状态 + 装载已有 buffer），再启动周期轮询
+        pollRTTOnce();
+        startRTTPolling();
+    }
+
+    function showConfigForSN(sn) {
+        const info = lastJlinkData[sn];
+        if (!info) return;
+
+        const config = document.getElementById('config');
+        const configEmpty = document.getElementById('config-empty');
+        config.style.display = '';
+        if (configEmpty) configEmpty.style.display = 'none';
+
+        document.getElementById('device-input').value = info.device || '';
+        const [server, source] = defaultServerName();
+        document.getElementById('server-input').value = server;
+        document.getElementById('server-source').textContent = source;
+        updateRemoteConfig();
+    }
+
+    function syncDeviceInputFromCache() {
+        if (!displayedSN) return;
+        const info = lastJlinkData[displayedSN];
+        if (!info) return;
+        const input = document.getElementById('device-input');
+        if (input && document.activeElement !== input) {
+            input.value = info.device || '';
+        }
+    }
+
+    function clearDisplay() {
+        displayedSN = null;
+        if (rttPollTimer) { clearInterval(rttPollTimer); rttPollTimer = null; }
+        rttCurrentlyActive = false;
+        rttLineIndex = 0;
+        document.getElementById('config').style.display = 'none';
+        const ce = document.getElementById('config-empty');
+        if (ce) ce.style.display = '';
+        document.getElementById('rtt-console').innerHTML =
+            '<span class="rtt-placeholder">请点击 JLink 列表中的设备以选中并查看其 RTT 数据...</span>';
+        setActiveSN(null);
+        setStatusUI('idle');
+    }
+
+    // ============================================================
+    // 设备型号输入 (auto-save on blur / Enter)
+    // ============================================================
+    function onDeviceBlur() {
+        if (!displayedSN) return;
+        const input = document.getElementById('device-input');
+        const device = input.value.trim();
+        const sn = displayedSN;
+        // 与缓存值相同则不必发请求
+        const cached = (lastJlinkData[displayedSN] && lastJlinkData[displayedSN].device) || '';
+        if (device === cached) return;
+
+        fetch(`/set_device?sn=${encodeURIComponent(sn)}&device=${encodeURIComponent(device)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    if (sn === displayedSN) showDeviceHint('已保存');
+                    if (lastJlinkData[sn]) lastJlinkData[sn].device = device;
+                } else {
+                    if (sn === displayedSN) showDeviceHint(data.error || '保存失败', true);
+                }
+            })
+            .catch(err => {
+                if (sn === displayedSN) showDeviceHint('保存失败', true);
+                console.error('set_device error:', err);
+            });
+    }
+
+    function onDeviceKeydown(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
+    }
+
+    function showDeviceHint(text, isError) {
+        const el = document.getElementById('device-hint');
+        if (!el) return;
+        el.textContent = text;
+        el.classList.toggle('hint-error', !!isError);
+        el.classList.add('hint-visible');
+        clearTimeout(el._hideTimer);
+        el._hideTimer = setTimeout(() => el.classList.remove('hint-visible'), 1800);
+    }
+
+    // ============================================================
+    // RTT 状态显示 + 启停按钮
+    // ============================================================
+    function setActiveSN(sn) {
+        const snEl = document.getElementById('rtt-active-sn');
+        const dlBtn = document.getElementById('rtt-download-btn');
+        if (snEl) snEl.textContent = sn ? `SN: ${sn}` : '';
+        if (dlBtn) dlBtn.disabled = !sn;
+        updateToggleBtn();
+    }
+
+    function setStatusUI(state, msg) {
+        const el = document.getElementById('rtt-status');
+        if (!el) return;
+        el.className = 'rtt-status';
+        if (state === 'connected') {
+            el.classList.add('connected');
+            el.textContent = '● 记录中';
+        } else if (state === 'connecting') {
+            el.classList.add('connecting');
+            el.textContent = '● 启动中...';
+        } else if (state === 'error') {
+            el.classList.add('error');
+            el.textContent = '● 错误' + (msg ? ` (${msg})` : '');
+        } else if (state === 'stopped') {
+            el.textContent = '● 已停止';
+        } else {
+            el.textContent = '● 未启动';
+        }
+    }
+
+    function updateToggleBtn() {
+        const btn = document.getElementById('rtt-toggle-btn');
+        if (!btn) return;
+        const label = btn.querySelector('.btn-label');
+        if (!displayedSN) {
+            btn.disabled = true;
+            btn.dataset.state = 'idle';
+            label.textContent = '开始 RTT';
+            return;
+        }
+        btn.disabled = false;
+        if (rttCurrentlyActive) {
+            btn.dataset.state = 'active';
+            label.textContent = '停止 RTT';
+        } else {
+            btn.dataset.state = 'idle';
+            label.textContent = '开始 RTT';
+        }
+    }
+
+    function toggleRTT() {
+        if (!displayedSN) return;
+        const btn = document.getElementById('rtt-toggle-btn');
+        btn.disabled = true;
+
+        if (rttCurrentlyActive) {
+            fetch(`/stop_rtt?sn=${encodeURIComponent(displayedSN)}`)
+                .then(r => r.json())
+                .then(() => {
+                    rttCurrentlyActive = false;
+                    setStatusUI('stopped');
+                })
+                .catch(err => console.error('stop_rtt error:', err))
+                .finally(() => updateToggleBtn());
+        } else {
+            const device = document.getElementById('device-input').value.trim();
+            if (!device) {
+                showDeviceHint('请先填写设备型号', true);
+                document.getElementById('device-input').focus();
+                updateToggleBtn();
+                return;
+            }
+            setStatusUI('connecting');
+            fetch(`/start_rtt?sn=${encodeURIComponent(displayedSN)}&device=${encodeURIComponent(device)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        rttCurrentlyActive = true;
+                        setStatusUI('connected');
+                        // 刷新一下列表里的"记录中"状态
+                        refreshJlinkList();
+                    } else {
+                        rttCurrentlyActive = false;
+                        setStatusUI('error', data.error || '启动失败');
+                    }
+                })
+                .catch(err => {
+                    rttCurrentlyActive = false;
+                    setStatusUI('error');
+                    console.error('start_rtt error:', err);
+                })
+                .finally(() => updateToggleBtn());
+        }
+    }
+
+    // ============================================================
+    // 轮询 / 数据
+    // ============================================================
+    function startRTTPolling() {
+        if (rttPollTimer) clearInterval(rttPollTimer);
+        rttPollTimer = setInterval(pollRTTOnce, 300);
+    }
+
+    function pollRTTOnce() {
+        if (!displayedSN) return;
+        const sn = displayedSN; // 避免轮询途中 displayedSN 变了导致归属错误
+        fetch(`/get_rtt_data?sn=${encodeURIComponent(sn)}&since=${rttLineIndex}`)
+            .then(r => r.json())
+            .then(data => {
+                if (sn !== displayedSN) return; // 期间用户切换了
+                const wasActive = rttCurrentlyActive;
+                rttCurrentlyActive = !!data.active;
+
+                if (data.lines && data.lines.length > 0) {
+                    appendRTTLines(data.lines);
+                    const placeholder = document.querySelector('#rtt-console .rtt-placeholder');
+                    if (placeholder) placeholder.remove();
+                }
+                rttLineIndex = data.index;
+
+                if (rttCurrentlyActive) {
+                    if (!wasActive) setStatusUI('connected');
+                } else {
+                    if (wasActive) setStatusUI('stopped');
+                }
+                updateToggleBtn();
+            })
+            .catch(err => console.error('poll error:', err));
+    }
+
+    function appendRTTLines(lines) {
+        const consoleEl = document.getElementById('rtt-console');
+        const atBottom = consoleEl.scrollHeight - consoleEl.scrollTop - consoleEl.clientHeight < 50;
+
+        for (const line of lines) {
+            // 只过滤 RTT Logger 自己的 banner 和分隔线
+            if (line.startsWith('###RTT Client') ||
+                line.startsWith('###RTT Logger') ||
+                line.startsWith('Shutting down') ||
+                line.startsWith('-----------------------------------------------') ||
+                line.trim() === '') continue;
+
+            const div = document.createElement('div');
+            div.className = 'rtt-line';
+            div.textContent = line;
+            consoleEl.appendChild(div);
+        }
+
+        while (consoleEl.children.length > 2000) {
+            consoleEl.removeChild(consoleEl.firstChild);
+        }
+
+        if (atBottom) {
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+    }
+
+    function clearRTT() {
+        const consoleEl = document.getElementById('rtt-console');
+        consoleEl.innerHTML = '';
+        rttLineIndex = 0;
+
+        if (displayedSN) {
+            fetch(`/clear_rtt_data?sn=${encodeURIComponent(displayedSN)}`)
+                .catch(err => console.error('clear_rtt_data error:', err));
+        }
+    }
+
+    function downloadRTTLog() {
+        if (!displayedSN) return;
+        const a = document.createElement('a');
+        a.href = `/download_rtt_log?sn=${encodeURIComponent(displayedSN)}`;
+        a.download = `rtt_${displayedSN}.log`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // ============================================================
+    // 启动
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        const di = document.getElementById('device-input');
+        if (di) {
+            di.addEventListener('blur', onDeviceBlur);
+            di.addEventListener('keydown', onDeviceKeydown);
+        }
+        ['device-input', 'server-input', 'interface-input', 'speed-input'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateRemoteConfig);
+        });
+        document.getElementById('server-input').addEventListener('input', () => {
+            document.getElementById('server-source').textContent = '手动设置，仅用于生成工程配置。';
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && document.body.classList.contains('rtt-expanded')) toggleRTTExpanded();
+        });
+        refreshJlinkList();
+    });
+</script>
+</body>
+
+</html>

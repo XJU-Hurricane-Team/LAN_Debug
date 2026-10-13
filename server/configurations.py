@@ -1,0 +1,18 @@
+# JLINK_VERSION = "V812e"
+# JLINK_ARCH = "arm64"
+
+# JLINK_PATH = f"/home/hurricane/Software/JLink_Linux_{JLINK_VERSION}_{JLINK_ARCH}/"
+JLINK_PATH = "/opt/SEGGER/JLink"
+JLINK_COMMANDER_EXEC = "JLinkExe"
+JLINK_REMOTE_SERVER_EXEC = "JLinkRemoteServerCLExe"
+JLINK_RTT_LOGGER_EXEC = "JLinkRTTLoggerExe"
+
+JLINK_SERVER_PORT_START = 19010
+JLINK_SERIAL_PORT_START = 19110
+RTT_TELNET_PORT_START = 19021
+
+# RTT (Real-Time Transfer) 默认参数
+# 设备型号 (RTT_DEVICE) 不再写死，由前端为每个 JLink 单独填写并持久化到 port.json。
+RTT_INTERFACE = "SWD"
+RTT_SPEED = 4000
+RTT_CHANNEL = 0

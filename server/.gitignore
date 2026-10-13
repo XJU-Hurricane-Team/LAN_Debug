@@ -1,0 +1,43 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+bin/
+include/
+lib/
+lib64/
+pyvenv.cfg
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+build/
+dist/
+*.egg-info/
+
+# Downloaded installers and archives (不分发 SEGGER 整套安装包)
+*.deb
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# Runtime logs / pid / RTT 临时数据 —— 全部不入库
+log/
+*.log
+*.pid
+*.tmp
+
+# 用户/设备相关的运行时配置（每台机器自动生成）
+port.json
+
+# Local editor files
+.vscode/
+.idea/
+.DS_Store

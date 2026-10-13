@@ -1,0 +1,36 @@
+# Local environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+build/
+dist/
+tmp/
+*.egg-info/
+
+# Runtime data and machine-specific configuration
+log/
+raw/
+index/
+run/
+port.json
+*.log
+*.pid
+*.tmp
+
+# Downloaded packages are not repository assets
+*.deb
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# Local editor state
+.vscode/
+.idea/
+.DS_Store

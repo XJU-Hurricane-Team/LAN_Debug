@@ -1,0 +1,75 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "${command:eide.project.build}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "flash",
+            "type": "shell",
+            "command": "${command:eide.project.uploadToDevice}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "build and flash",
+            "type": "shell",
+            "command": "${command:eide.project.buildAndFlash}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "rebuild",
+            "type": "shell",
+            "command": "${command:eide.project.rebuild}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "${command:eide.project.clean}",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "JLINK LAN: start GDB server",
+            "type": "process",
+            "command": "python",
+            "linux": {
+                "command": "python3"
+            },
+            "args": [
+                "-u",
+                "${workspaceFolder}/Debug_LAN/jlink_flash.py",
+                "--gdb-server"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "jlink-lan",
+                "pattern": {
+                    "regexp": "^(.*):(\\d+): (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^\\[remote-jlink\\] GDB STARTING$",
+                    "endsPattern": "^\\[remote-jlink\\] GDB READY$"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "runOptions": {
+                "instanceLimit": 1
+            }
+        }
+    ]
+}
