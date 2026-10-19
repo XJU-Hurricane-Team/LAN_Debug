@@ -1,14 +1,14 @@
-### 简介：
+# LAN Debug Server
 
-该项目是运行在`Linux`环境下的一个`flas`k应用，作用是为`JLink`提供远程调试服务，同时支持使用`JLink`上自带的串口进行无线通信，RTT 数据的显示（通道0）。将项目部署在`Linux`设备上在同一局域网下通过浏览器访问`http:服务器Ip:8000`即可浏览服务器所连所有`JLink`信息，在修改在本地调试配置文件之后即可进行无线调试。已在`树莓派4B 4G + Ubuntu Server22.04`环境下运行通过。
+本仓`server/`维护Linux服务，来自原LAN-Debug-Server。当前提供远程J-Link、串口TCP转发和网页RTT通道0；Windows仅作为客户端访问网页。原项目树莓派4B/Ubuntu Server22.04的测试记录不等于本仓重新部署验收，当前待验范围见[仓库说明](../README.md)。
 
 ### 部署：
 
 #### 自动
 
-1. 将仓库克隆或者复制至设备的用户目录下。
-2. 在项目根目录以普通用户执行 `bash pack/deploy.sh`，一键完成部署（内部按需 sudo）。
-3. 确认部署后，脚本会询问局域网访问名称，例如输入 `robot`，部署完成后访问 `http://robot.local:8000`。回车沿用已有 Avahi 名称，首次默认使用系统短主机名。
+1. 将仓库克隆或复制至Linux设备，进入`LAN_Debug/server/`。自行准备适用许可下的官方J-Link安装包，放入`server/pack/`；文件名须匹配脚本识别的架构，本仓不携带`.deb`。
+2. 在`server/`目录以普通用户执行`bash pack/deploy.sh`，内部按需sudo。即使系统已有J-Link，当前脚本前置检查仍要求匹配架构的安装包，缺失会停止。
+3. 确认部署后，脚本先询问局域网访问名称，例如输入 `robot`，部署完成后访问 `http://robot.local:8000`。回车沿用已有 Avahi 名称，首次默认使用系统短主机名。
 
 #### Avahi 与 Windows 代理
 
@@ -24,8 +24,8 @@ Windows 可用 `curl.exe --noproxy "*" --connect-timeout 5 -I http://robot.local
 
 #### 手动
 
-1. 在服务器上创建项目文件夹，并将项目文件复制到项目文件夹下。
-2. 创建python虚拟环境，并安装依赖（在`requirement.txt`文件当中）。
+1. 将本仓`server/`完整复制到Linux服务工作目录。
+2. 创建Python虚拟环境，并按`requirements.txt`安装依赖。
 3. 为服务器安装JLink的驱动程序。
 4. 将项目文件中`bash.sh`,`configurations.py`文件当中的路径更改为实际路径
 5. 将bash.sh脚本添加成为服务开机自启（可参考pack文件夹下的文件）。
@@ -50,7 +50,7 @@ Windows 可用 `curl.exe --noproxy "*" --connect-timeout 5 -I http://robot.local
 
 #### 无线烧录
 
-先按客户端工具包 `Debug_LAN/README.md` 将工具复制到实际工程。需要 EIDE 单独远程烧录时，选择 `Custom CLI`，填写：
+先按[客户端说明](../client/README.md)将本仓`client/`复制到实际工程并命名为`Debug_LAN/`。需要 EIDE 单独远程烧录时，选择 `Custom CLI`，填写：
 
 ```text
 python "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"
@@ -83,3 +83,7 @@ Linux 将 `python` 改为 `python3`。脚本读取工程内的 `Debug_LAN/remote
 
 如图：
 ![image-20260505161028613](./Picture/image-20260505161028613.png)
+
+## 验证边界
+
+此处是部署与操作说明，本轮未执行部署、服务启动或硬件测试。网页RTT仍由现有Logger消费探针，与helper远程变量SDK采集手动互斥；r1唯一采集/保存和统一日志API是后续待讨论方向，尚未实现。配置/状态入口的扫描、进程启动和写盘副作用以源码为准。实际验收需记录设备、SEGGER版本、端口、真实服务/GUI行为及原始日志。

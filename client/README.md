@@ -1,5 +1,7 @@
 # 远程 J-Link 工具
 
+本仓`client/`是后续源码维护位置，来自STM32-Template的Debug_LAN；部署到业务工程时仍命名`Debug_LAN/`，保持旧路径和接口兼容。既有工具Release下载尚未迁移，按[仓库说明](../README.md)保留旧发布源。
+
 这是以 G4 模板为可选远程烧录与调试工具包。G4 模板默认使用本地 USB J-Link，需要局域网远程烧录或调试时，按下面步骤接入。示例芯片及 ELF 路径按 G4 配置；用于其他芯片工程时需同步调整并验证。
 
 ## 必做
@@ -49,7 +51,7 @@ getent ahostsv4 robocon-r1-debug.local
 
 ### 2. 复制工具和配置
 
-1. 将整个 `Debug_LAN/` 复制到实际工程根目录，与 `.eide/`、`.vscode/`、`CubeMX/`、`User/` 同级。在本仓库 G4 模板中使用时，工程根目录是 `g4_template/`。
+1. 将本仓整个`client/`复制到实际工程根目录并命名为`Debug_LAN/`，与`.eide/`、`.vscode/`、`CubeMX/`、`User/`同级。G4工程根目录例如`g4_template/`；本仓不包含固件模板。
 2. 将 `Debug_LAN/vscode/launch.json` 和 `tasks.json` 合并到工程 `.vscode/`。没有自定义配置时可直接复制覆盖；已有配置时，分别合并 `configurations` 和 `tasks` 数组。
 
 `remote-jlink.json` 和 `jlink_flash.py` 保留在 `Debug_LAN/`。只复制工具目录不会启用调试配置。
