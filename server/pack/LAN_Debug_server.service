@@ -1,0 +1,48 @@
+[Unit]
+Description=LAN_Debug_server (JLink Remote + RTT + Serial Bridge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+SupplementaryGroups=plugdev dialout
+
+WorkingDirectory=@PROJECT_DIR@
+
+Environment="HOME=@HOME@"
+Environment="USER=@USER@"
+Environment="LANG=C.UTF-8"
+Environment="LC_ALL=C.UTF-8"
+Environment="PATH=@PROJECT_DIR@/.venv/bin:/opt/SEGGER/JLink:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="LD_LIBRARY_PATH=/opt/SEGGER/JLink"
+Environment="PYTHONUNBUFFERED=1"
+Environment="TERM=xterm-256color"
+
+# === 关键这一行：用 script 给 bash.sh 套一个真实 PTY ===
+# -q 不打印 Script started/done 信息
+# -e 透传退出码给 systemd
+# -f 每次写都 flush，不缓冲
+# -c 要执行的命令
+# 末尾的 /dev/null 是 typescript 文件，丢弃
+ExecStart=/usr/bin/script -qefc "/bin/bash ./bash.sh" /dev/null
+
+TimeoutStopSec=15
+
+KillMode=control-group
+KillSignal=SIGTERM
+SendSIGKILL=yes
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=LAN_Debug_server
+
+NoNewPrivileges=yes
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

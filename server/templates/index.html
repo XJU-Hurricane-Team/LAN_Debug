@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JlinkDebug</title>
+    <title>LAN_Debug_server</title>
     <link rel="icon" href="/static/logo-banner.png" type="image/png">
     <!-- 在样式表加载前先把主题应用到 <html>，避免刷新时白闪 -->
     <script>
@@ -31,7 +31,7 @@
     <div class="topbar-brand">
         <h1 class="brand-title">
             <span class="brand-main">HURRICANE</span>
-            <span class="brand-sub">LAN-Debug-Server</span>
+            <span class="brand-sub">LAN_Debug_server</span>
         </h1>
     </div>
     <div class="topbar-actions">
@@ -59,10 +59,10 @@
             <h3>Custom CLI 远程烧录</h3>
             <p class="config-note">EIDE 烧录器选择 Custom CLI，将对应命令填入烧录配置。</p>
             <div class="flash-command-header"><span>Windows</span><button id="flash-copy-windows" class="btn btn-outline btn-sm" onclick="copyCustomFlash('windows')">复制命令</button></div>
-            <div class="flash-command"><code id="flash-command-windows">python "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"</code></div>
+            <div class="flash-command"><code id="flash-command-windows">python "${ProjectRoot}/LAN_Debug/jlink_flash.py" --program "${programFile}"</code></div>
             <div class="flash-command-header"><span>Linux</span><button id="flash-copy-linux" class="btn btn-outline btn-sm" onclick="copyCustomFlash('linux')">复制命令</button></div>
-            <div class="flash-command"><code id="flash-command-linux">python3 "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"</code></div>
-            <p class="config-note">先将 Debug_LAN 工具包和下载的配置保存到客户端工程。此配置用于 EIDE 单独烧录；F5 调试仍选择 Debug: JLINK LAN。不要选择全片擦除，工具未配置该命令。</p>
+            <div class="flash-command"><code id="flash-command-linux">python3 "${ProjectRoot}/LAN_Debug/jlink_flash.py" --program "${programFile}"</code></div>
+            <p class="config-note">先将 client/LAN_Debug/ 整个文件夹复制到客户端工程根目录，再将下载的配置保存到 LAN_Debug/remote-jlink.json。此配置用于 EIDE 单独烧录；F5 调试仍选择 Debug: JLINK LAN。不要选择全片擦除，工具未配置该命令。</p>
             <p class="config-note config-validation" id="flash-copy-status" role="status"></p>
         </div>
     </section>
@@ -99,7 +99,7 @@
                     <p class="config-note">用于工程烧录与调试；网页 RTT 沿用服务端设置。连接不稳定可降至 4000 或 1000。</p>
                 </details>
                 <div class="config-preview-header">
-                    <code>Debug_LAN/remote-jlink.json</code>
+                    <code>LAN_Debug/remote-jlink.json</code>
                     <div class="config-actions">
                         <button id="config-copy-btn" class="btn btn-primary btn-sm" onclick="copyRemoteConfig()" disabled>复制</button>
                         <button id="config-download-btn" class="btn btn-outline btn-sm" onclick="downloadRemoteConfig()" disabled>下载</button>
@@ -108,7 +108,7 @@
                 <pre class="config-preview"><code id="remote-config"></code></pre>
                 <p class="config-note config-validation" id="config-validation" role="status"></p>
                 <div class="config-footnote">
-                    下载后保存到客户端工程的 <code>Debug_LAN/remote-jlink.json</code>。<code>launch.json</code> 仍需手动核对芯片、ELF 与 SVD 路径；首次接入请合并工具包的 <code>vscode/</code> 示例，F5 选择 <code>Debug: JLINK LAN</code>。已有自定义 <code>JLinkExe</code> 路径请保留。
+                    下载后保存到客户端工程的 <code>LAN_Debug/remote-jlink.json</code>。<code>launch.json</code> 仍需手动核对芯片、ELF 与 SVD 路径；首次接入请合并工具包的 <code>vscode/</code> 示例，F5 选择 <code>Debug: JLINK LAN</code>。已有自定义 <code>JLinkExe</code> 路径请保留。
                 </div>
             </div>
         </div>

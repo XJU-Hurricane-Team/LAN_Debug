@@ -1,13 +1,15 @@
-# LAN Debug Server
+# LAN_Debug_server
 
-本仓`server/`维护Linux服务，来自原LAN-Debug-Server。当前提供远程J-Link、串口TCP转发和网页RTT通道0；Windows仅作为客户端访问网页。原项目树莓派4B/Ubuntu Server22.04的测试记录不等于本仓重新部署验收，当前待验范围见[仓库说明](../README.md)。
+本仓`server/`维护Linux服务，由本仓统一维护。当前提供远程J-Link、串口TCP转发和网页RTT通道0；Windows仅作为客户端访问网页。原项目树莓派4B/Ubuntu Server22.04的测试记录不等于本仓重新部署验收，当前待验范围见[仓库说明](../README.md)。
+
+已有旧版部署请先阅读[升级、卸载与回退说明](UPGRADE.md)。新服务名为 `LAN_Debug_server`，服务端目录可独立复制；启动不依赖仓库根目录。
 
 ### 部署：
 
 #### 自动
 
-1. 将仓库克隆或复制至Linux设备，进入`LAN_Debug/server/`。自行准备适用许可下的官方J-Link安装包，放入`server/pack/`；文件名须匹配脚本识别的架构，本仓不携带`.deb`。
-2. 在`server/`目录以普通用户执行`bash pack/deploy.sh`，内部按需sudo。即使系统已有J-Link，当前脚本前置检查仍要求匹配架构的安装包，缺失会停止。
+1. 将仓库克隆或复制至Linux设备，进入`LAN_Debug/server/`。自行准备适用许可下的官方J-Link安装包，放入`server/pack/`；仅在未安装 J-Link 时需要安装包，文件名须匹配脚本识别的架构，本仓不携带`.deb`。
+2. 在`server/`目录以普通用户执行`bash pack/deploy.sh`，内部按需sudo。已安装 /opt/SEGGER/JLink/JLinkExe 时复用现有 SDK，无需再次提供安装包；首次安装才要求匹配架构的 .deb。
 3. 确认部署后，脚本先询问局域网访问名称，例如输入 `robot`，部署完成后访问 `http://robot.local:8000`。回车沿用已有 Avahi 名称，首次默认使用系统短主机名。
 
 #### Avahi 与 Windows 代理
@@ -27,8 +29,8 @@ Windows 可用 `curl.exe --noproxy "*" --connect-timeout 5 -I http://robot.local
 1. 将本仓`server/`完整复制到Linux服务工作目录。
 2. 创建Python虚拟环境，并按`requirements.txt`安装依赖。
 3. 为服务器安装JLink的驱动程序。
-4. 将项目文件中`bash.sh`,`configurations.py`文件当中的路径更改为实际路径
-5. 将bash.sh脚本添加成为服务开机自启（可参考pack文件夹下的文件）。
+4. `bash.sh` 自动定位自身目录；按实际安装位置核对 `configurations.py` 中的 J-Link 路径。
+5. 使用 `pack/deploy.sh` 生成 `LAN_Debug_server.service`，不要直接安装含占位符的模板。
 
 ![image-20260504231500885](./Picture/image-20260504231500885.png)
 
@@ -39,28 +41,28 @@ Windows 可用 `curl.exe --noproxy "*" --connect-timeout 5 -I http://robot.local
 点击`Jlink`设备卡片上的刷新按钮显示设备上连接的所有`Jlink`，在下方列表点击要查看的`JLink`右侧连接配置卡片会显示对应`JLink`的信息。
 
 - 设备型号：由用户手动输入`JLink`连接的芯片型号，默认记忆`JLink`上次连接的型号。
-- 客户端配置：填写芯片型号后，可复制或下载 `remote-jlink.json`，保存到客户端工程的 `Debug_LAN/` 目录。这是客户端工具的配置，不是服务端 Avahi 配置。
+- 客户端配置：填写芯片型号后，可复制或下载 `remote-jlink.json`，保存到客户端工程的 `LAN_Debug/` 目录。这是客户端工具的配置，不是服务端 Avahi 配置。
 - 服务器名称：优先读取 Avahi 当前实际发布的名称；不可读取时，参考当前网页的 `.local` 名称、Avahi 配置文件或服务器 IPv4，并显示来源。配置文件中的名称未必等于当前发布名称（例如名称冲突），请按提示核对；也可手动编辑。
 - 高级设置：配置客户端接口和速度，默认 `SWD` / `8000 kHz`；网页 RTT 仍使用服务端自身的接口和速度设置。已有自定义 `JLinkExe` 路径时，下载后保留实际路径。
 - 网页不会生成 `launch.json`。其芯片、ELF 和 SVD 路径需在客户端工程中手动核对。
-- Custom CLI 远程烧录：设备列表下方分别提供 Windows / Linux 命令及复制按钮，粘贴到 EIDE 的 Custom CLI 烧录配置。客户端需先准备 `Debug_LAN` 工具包和配置；该工具未配置全片擦除。
+- Custom CLI 远程烧录：设备列表下方分别提供 Windows / Linux 命令及复制按钮，粘贴到 EIDE 的 Custom CLI 烧录配置。客户端需先准备 `LAN_Debug` 工具包和配置；该工具未配置全片擦除。
 - 布局：上方选择设备和生成客户端配置，下方 RTT 适应窗口剩余高度；点击“放大”专注查看 RTT，点击“还原”或按 Esc 返回。
 
-下方旧版使用截图仅用于参考；当前连接配置以 `Debug_LAN` 客户端工具包为准。
+下方旧版使用截图仅用于参考；当前连接配置以 `LAN_Debug` 客户端工具包为准。
 
 #### 无线烧录
 
-先按[客户端说明](../client/README.md)将本仓`client/`复制到实际工程并命名为`Debug_LAN/`。需要 EIDE 单独远程烧录时，选择 `Custom CLI`，填写：
+先按[客户端说明](../client/LAN_Debug/README.md)将本仓`client/LAN_Debug/`整个文件夹复制到实际工程根目录。需要 EIDE 单独远程烧录时，选择 `Custom CLI`，填写：
 
 ```text
-python "${ProjectRoot}/Debug_LAN/jlink_flash.py" --program "${programFile}"
+python "${ProjectRoot}/LAN_Debug/jlink_flash.py" --program "${programFile}"
 ```
 
-Linux 将 `python` 改为 `python3`。脚本读取工程内的 `Debug_LAN/remote-jlink.json`；网页下载的配置需手动保存到该位置。
+Linux 将 `python` 改为 `python3`。脚本读取工程内的 `LAN_Debug/remote-jlink.json`；网页下载的配置需手动保存到该位置。
 
 #### 无线调试
 
-将工具包 `Debug_LAN/vscode/launch.json` 和 `tasks.json` 合并到工程 `.vscode/`，手动核对 `launch.json` 的芯片、ELF 和 SVD 路径。编译后选择 `Debug: JLINK LAN` 并按 F5，前置任务自动启动本机 GDB Server，调试连接使用 `127.0.0.1:2331`，远程探针地址由客户端 JSON 指定。
+将工具包 `LAN_Debug/vscode/launch.json` 和 `tasks.json` 合并到工程 `.vscode/`，手动核对 `launch.json` 的芯片、ELF 和 SVD 路径。编译后选择 `Debug: JLINK LAN` 并按 F5，前置任务自动启动本机 GDB Server，调试连接使用 `127.0.0.1:2331`，远程探针地址由客户端 JSON 指定。
 
 网页端口 `8000`、远程探针端口和本机 GDB 端口作用不同，不能互相替代。调试前停止占用同一探针的网页 RTT 或其他会话；F5 会下载 ELF，无需先单独烧录。
 

@@ -1,6 +1,12 @@
 # LAN_Debug
 
-战队LAN调试基础设施。`client/`维护原Debug_LAN命令行工具后续源码，`server/`维护Linux远程J-Link、网页RTT和串口TCP转发。桌面客户端由相邻`embedded_helper`维护，固件logger归STM32-Template；同一工具不与旧来源并行开发。
+战队LAN调试基础设施。`client/LAN_Debug/`维护LAN_Debug_client命令行工具源码，`server/`维护Linux远程J-Link、网页RTT和串口TCP转发。桌面客户端由相邻`embedded_helper`维护，固件logger归STM32-Template；同一工具不与旧来源并行开发。
+
+## 命名与目录
+
+统一基础名称为 `LAN_Debug`；组件名称为 `LAN_Debug_server`、`LAN_Debug_client`，server/client 只作后缀。仓库以 `server/`、`client/` 分类，客户端可复制目录固定为 `client/LAN_Debug/`。新命令和配置路径不得使用旧名称；下文来源记录、既有 Release 标识及旧服务卸载入口保留历史名称用于追溯和迁移。
+
+已有 Linux 部署见[升级、卸载与回退说明](server/UPGRADE.md)。
 
 ## 源码来源与边界
 
@@ -9,13 +15,13 @@
 | `server/` | LAN-Debug（原LAN-Debug-Server） | `main` | `35bf8bd2e307d0dcae227bcd7b06d357213639ec` |
 | `client/` | STM32-Template的`Debug_LAN/` | `temp` | `b39113c36c198ef25412050ec043fd03caa20fdc` |
 
-这些提交是来源基线，不是当前部署或验收结论。当前业务实现由本仓维护；完整引入过程留在Git，不另建历史副本。未纳入来源仓库的Git元数据、日志、虚拟环境、缓存及机器配置。`client/remote-jlink.json`仍为来源示例，使用前核对实际设备。
+这些提交是来源基线，不是当前部署或验收结论。当前业务实现由本仓维护；完整引入过程留在Git，不另建历史副本。未纳入来源仓库的Git元数据、日志、虚拟环境、缓存及机器配置。`client/LAN_Debug/remote-jlink.json`仍为来源示例，使用前核对实际设备。
 
-本仓不携带SEGGER安装包，`server/pack/`保留部署脚本。部署脚本仍要求匹配架构的官方`.deb`，需按适用许可自行准备；不能直接从干净克隆宣称可一键部署。旧查询、服务启动、日志清理、进程终止及网页写配置的副作用仍存在，具体以源码为准，不能当成纯只读入口。
+本仓不携带SEGGER安装包，`server/pack/`保留部署脚本。已安装`/opt/SEGGER/JLink/JLinkExe`时沿用现有SDK，首次安装才要求匹配架构的官方`.deb`，需按适用许可自行准备。查询、服务启动、日志清理、进程终止及网页写配置的副作用仍存在，具体以源码为准，不能当成纯只读入口。
 
 ## 使用入口与兼容
 
-- [命令行客户端](client/README.md)：将本仓`client/`作为来源，复制到业务工程时命名`Debug_LAN/`；已安装版本化工具继续按工程锁使用。
+- [命令行客户端](client/README.md)：将本仓`client/LAN_Debug/`整个文件夹复制到业务工程根目录，工具目录统一为`LAN_Debug/`；已安装版本化工具继续按工程锁使用。
 - [Linux服务端](server/README.md)：服务工作目录为本仓`server/`，部署命令从该目录执行，不从仓库根执行旧的`pack/`路径。
 - `embedded_helper`当前仍通过SDK直连本地/远程J-Link读取变量；远程变量与服务端网页RTT手动互斥，不共享一个采集服务。
 

@@ -45,7 +45,7 @@
             },
             "args": [
                 "-u",
-                "${workspaceFolder}/Debug_LAN/jlink_flash.py",
+                "${workspaceFolder}/LAN_Debug/jlink_flash.py",
                 "--gdb-server"
             ],
             "isBackground": true,

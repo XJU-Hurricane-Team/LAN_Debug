@@ -1,13 +1,13 @@
 #!/bin/bash
 # ============================================================
-# LAN Debug Server  -  一键部署脚本
+# LAN_Debug_server  -  一键部署脚本
 # ------------------------------------------------------------
 # 用途：在一台干净的 Linux 设备（树莓派 / 任意 arm64 主机）上把
 #       Python 虚拟环境、JLink 驱动、systemd 自启动服务一次性配好。
 #
 # 用法：
 #   1. 把整个项目 clone 或 scp 到目标机器上
-#   2. cd 到项目根目录
+#   2. cd 到服务端目录（本仓 server/）
 #   3. bash pack/deploy.sh
 #
 # 注意：
@@ -20,8 +20,7 @@ set -euo pipefail
 # ---------- 基础信息 ----------
 PACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$PACK_DIR")"
-PROJECT_NAME="$(basename "$PROJECT_DIR")"
-SERVICE_NAME="lan-debug-server"
+SERVICE_NAME="LAN_Debug_server"
 SERVICE_TEMPLATE="$PACK_DIR/${SERVICE_NAME}.service"
 SERVICE_TARGET="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -71,8 +70,20 @@ fi
 [ -f "$PROJECT_DIR/bash.sh" ] || fail "找不到 bash.sh"
 [ -f "$PACK_DIR/configure-avahi.sh" ] || fail "找不到 configure-avahi.sh"
 
-if [ -z "$JLINK_DEB" ]; then
-    available="$(ls -1 "$PACK_DIR"/JLink_Linux_*.deb 2>/dev/null | xargs -n1 basename 2>/dev/null)"
+for value in "$PROJECT_DIR" "$CURRENT_HOME"; do
+    case "$value" in
+        *['\"%$`']*|*$'\n'*|*$'\r'*)
+            fail "部署路径不能包含反斜杠、双引号、百分号、美元符号、反引号或换行：$value" ;;
+    esac
+done
+
+LEGACY_STATE="$(systemctl show lan-debug-server.service -p LoadState --value)"
+if [ "$LEGACY_STATE" != "not-found" ]; then
+    fail "检测到旧服务 lan-debug-server（$LEGACY_STATE）。请先按 UPGRADE.md 备份并运行 pack/uninstall-legacy.sh --apply。"
+fi
+
+if [ -z "$JLINK_DEB" ] && [ ! -x /opt/SEGGER/JLink/JLinkExe ]; then
+    available="$(find "$PACK_DIR" -maxdepth 1 -name 'JLink_Linux_*.deb' -printf '%f\n')"
     available="${available:-(无)}"
     fail "找不到匹配当前架构的 JLink 安装包。
         系统架构 : $ARCH${JLINK_ARCH_TAG:+  -> 期望文件名: JLink_Linux_*_${JLINK_ARCH_TAG}.deb}
@@ -84,14 +95,14 @@ fi
 # ---------- 信息确认 ----------
 cat <<EOF
 
-${BOLD}LAN Debug Server  -  一键部署${NC}
+${BOLD}LAN_Debug_server  -  一键部署${NC}
 --------------------------------------------
   项目目录   : $PROJECT_DIR
   运行用户   : $CURRENT_USER
   运行用户组 : $CURRENT_GROUP
   用户家目录 : $CURRENT_HOME
   系统架构   : $ARCH  (匹配 tag: ${JLINK_ARCH_TAG:-未知})
-  JLink 包   : $(basename "$JLINK_DEB")
+  JLink 包   : ${JLINK_DEB:-使用已安装的 /opt/SEGGER/JLink}
   service    : $SERVICE_TARGET
 --------------------------------------------
 EOF
@@ -180,21 +191,16 @@ chmod +x "$PROJECT_DIR/bash.sh"
 # ============================================================
 step "[6/6] 安装 systemd service"
 
-# 用 sed 把模板里硬编码的 pickingchip / 路径替换成当前实际值。
-# 替换顺序很关键：先长后短，先路径后用户名，避免误伤。
-#   1) 先替换最长的 项目目录 路径
-#   2) 再替换 /home/pickingchip 家目录前缀（Environment 里的 HOME / PATH 等）
-#   3) 然后逐行处理 User= / Group= / Environment="USER=..."
-#      —— 注意 Environment="USER=pickingchip" 行尾是引号，不能靠 $ 或空格锚定
+# 用明确占位符生成服务配置，不依赖旧仓库名或固定用户名。
+sed_value() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
 TMP_SERVICE="$(mktemp)"
 trap 'rm -f "$TMP_SERVICE"' EXIT
 
 sed \
-    -e "s|/home/pickingchip/LAN-Debug-Server|${PROJECT_DIR}|g" \
-    -e "s|/home/pickingchip|${CURRENT_HOME}|g" \
-    -e "s|^User=pickingchip|User=${CURRENT_USER}|" \
-    -e "s|^Group=pickingchip|Group=${CURRENT_GROUP}|" \
-    -e "s|USER=pickingchip|USER=${CURRENT_USER}|g" \
+    -e "s|@PROJECT_DIR@|$(sed_value "$PROJECT_DIR")|g" \
+    -e "s|@HOME@|$(sed_value "$CURRENT_HOME")|g" \
+    -e "s|@USER@|$(sed_value "$CURRENT_USER")|g" \
+    -e "s|@GROUP@|$(sed_value "$CURRENT_GROUP")|g" \
     "$SERVICE_TEMPLATE" > "$TMP_SERVICE"
 
 info "生成的 service 文件预览（关键几行）："
@@ -211,7 +217,8 @@ if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     info "service 状态：${GREEN}active${NC}"
 else
     warn "service 不是 active 状态，检查："
-    sudo systemctl status "$SERVICE_NAME" --no-pager | head -20
+    sudo systemctl status "$SERVICE_NAME" --no-pager || true
+    fail "LAN_Debug_server 启动失败，请检查上述状态及 journalctl 日志。"
 fi
 
 # ============================================================
