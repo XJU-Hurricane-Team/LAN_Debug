@@ -5,6 +5,7 @@ from pathlib import Path
 import socket
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -136,6 +137,7 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(args[args.index("-port") + 1], "2331")
         self.assertEqual(args[args.index("-localhostonly") + 1], "1")
         self.assertIn("-singlerun", args)
+        self.assertIn("-nohalt", args)
         self.assertIn("[remote-jlink] GDB READY", output.getvalue())
         self.assertTrue(child.stdout.closed)
 
@@ -214,6 +216,38 @@ class FlashTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 flash.run_gdb(self.config, self.root / "server", "192.168.28.24", 2331)
             run.assert_not_called()
+
+    def test_ready_server_without_client_releases_real_child(self):
+        # Real subprocess and timer: READY must not disable the connection deadline.
+        timer = threading.Timer
+        processes = []
+        popen = flash.subprocess.Popen
+        def launch(*args, **kwargs):
+            child = popen(*args, **kwargs)
+            processes.append(child)
+            return child
+        command = [sys.executable, "-u", "-c",
+                   "import time; print('Connected to target', flush=True); time.sleep(10)"]
+        with patch.object(flash, "gdb_arguments", return_value=command), \
+                patch.object(flash, "check_gdb_ports"), \
+                patch.object(flash.threading, "Timer", side_effect=lambda _, callback: timer(0.5, callback)), \
+                patch.object(flash.subprocess, "Popen", side_effect=launch), \
+                redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(ValueError, "No GDB client"):
+                flash.run_gdb(self.config, self.root / "server", "192.168.28.24", 2331)
+        self.assertIsNotNone(processes[0].poll())
+        self.assertTrue(processes[0].stdout.closed)
+
+    def test_connected_client_outlives_connection_deadline(self):
+        timer = threading.Timer
+        command = [sys.executable, "-u", "-c",
+                   "import time; print('Connected to target\\nWaiting for GDB connection..."
+                   "Connected to 127.0.0.1', flush=True); time.sleep(1)"]
+        with patch.object(flash, "gdb_arguments", return_value=command), \
+                patch.object(flash, "check_gdb_ports"), \
+                patch.object(flash.threading, "Timer", side_effect=lambda _, callback: timer(0.5, callback)), \
+                redirect_stdout(io.StringIO()):
+            self.assertEqual(flash.run_gdb(self.config, self.root / "server", "192.168.28.24", 2331), 0)
 
 
 if __name__ == "__main__":

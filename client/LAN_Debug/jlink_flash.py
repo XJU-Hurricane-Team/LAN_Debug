@@ -142,7 +142,7 @@ def gdb_arguments(config: dict, server: Path, address: str, port: int) -> list[s
             "-device", config["Device"], "-if", config["Interface"],
             "-speed", str(config["SpeedKHz"]), "-endian", "little",
             "-port", str(port), "-swoport", str(port + 1), "-telnetport", str(port + 2),
-            "-localhostonly", "1", "-singlerun", "-nogui", "-halt"]
+            "-localhostonly", "1", "-singlerun", "-nogui", "-nohalt"]
 
 
 def check_gdb_ports(port: int) -> None:
@@ -170,13 +170,14 @@ def run_gdb(config: dict, server: Path, address: str, port: int, *, dry_run: boo
     check_gdb_ports(port)
     print("[remote-jlink] GDB STARTING", flush=True)
     ready = threading.Event()
+    client_connected = threading.Event()
     timed_out = threading.Event()
     communication_error = threading.Event()
     child = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, encoding="utf-8", errors="replace", bufsize=1)
 
     def startup_timeout():
-        if not ready.is_set() and child.poll() is None:
+        if not client_connected.is_set() and child.poll() is None:
             timed_out.set()
             child.terminate()
 
@@ -190,6 +191,11 @@ def run_gdb(config: dict, server: Path, address: str, port: int, *, dry_run: boo
         # until GDB connects, while VS Code is still waiting for this signal.
         for character in iter(lambda: child.stdout.read(1), ""):
             pending += character
+            # A listening server is not a debugger session. VS Code can cancel
+            # after READY without ever connecting; keep the deadline until GDB.
+            if "Connected to 127.0.0.1" in pending or "Connected to ::1" in pending:
+                client_connected.set()
+                timer.cancel()
             if "ERROR: Communication timed out" in pending:
                 communication_error.set()
             # V9.42 may finish startup at "Connected to target" without the old prompt.
@@ -198,7 +204,6 @@ def run_gdb(config: dict, server: Path, address: str, port: int, *, dry_run: boo
                 print(pending, flush=True)
                 pending = ""
                 ready.set()
-                timer.cancel()
                 print("[remote-jlink] GDB READY", flush=True)
             elif character == "\n":
                 print(pending, end="", flush=True)
@@ -209,6 +214,8 @@ def run_gdb(config: dict, server: Path, address: str, port: int, *, dry_run: boo
         if communication_error.is_set() and code == 0:
             raise ValueError("GDB Server reported a communication timeout despite exit code 0; inspect target state")
         if timed_out.is_set():
+            if ready.is_set():
+                raise ValueError("No GDB client connected within 30 seconds; probe released. Retry debugging.")
             raise ValueError("GDB Server startup timed out; inspect the SDK output above")
         if not ready.is_set() and code == 0:
             raise ValueError("GDB Server exited without becoming ready")
