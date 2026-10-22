@@ -265,7 +265,7 @@
     let rttLineIndex = 0;
     // 轮询定时器
     let rttPollTimer = null;
-    let rttPollPending = false;
+    let rttPollPending = null;
     // 最近一次 /get_jlink_list 的响应缓存（包含 ip + 各 SN 的 device/server/serial/rtt_active）
     let lastJlinkData = {};
 
@@ -527,13 +527,19 @@
     }
 
     function pollRTTOnce() {
-        if (!displayedSN || rttPollPending) return;
-        rttPollPending = true;
+        if (rttPollPending) {
+            if (rttPollPending.sn === displayedSN) return;
+            rttPollPending.controller.abort();
+        }
+        if (!displayedSN) return;
+        const request = { sn: displayedSN, controller: new AbortController() };
+        rttPollPending = request;
+        const deadline = setTimeout(() => request.controller.abort(), 10000);
         const sn = displayedSN; // 避免轮询途中 displayedSN 变了导致归属错误
-        fetch(`/get_rtt_data?sn=${encodeURIComponent(sn)}&since=${rttLineIndex}`)
+        fetch(`/get_rtt_data?sn=${encodeURIComponent(sn)}&since=${rttLineIndex}`, { signal: request.controller.signal })
             .then(r => r.json())
             .then(data => {
-                if (sn !== displayedSN) return; // 期间用户切换了
+                if (sn !== displayedSN || rttPollPending !== request || request.controller.signal.aborted) return; // 期间用户切换了
                 const wasActive = rttCurrentlyActive;
                 rttCurrentlyActive = !!data.active;
 
@@ -552,7 +558,10 @@
                 updateToggleBtn();
             })
             .catch(err => console.error('poll error:', err))
-            .finally(() => { rttPollPending = false; });
+            .finally(() => {
+                clearTimeout(deadline);
+                if (rttPollPending === request) rttPollPending = null;
+            });
     }
 
     function appendRTTLines(lines) {
