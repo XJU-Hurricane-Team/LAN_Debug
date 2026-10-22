@@ -265,6 +265,7 @@
     let rttLineIndex = 0;
     // 轮询定时器
     let rttPollTimer = null;
+    let rttPollPending = false;
     // 最近一次 /get_jlink_list 的响应缓存（包含 ip + 各 SN 的 device/server/serial/rtt_active）
     let lastJlinkData = {};
 
@@ -526,7 +527,8 @@
     }
 
     function pollRTTOnce() {
-        if (!displayedSN) return;
+        if (!displayedSN || rttPollPending) return;
+        rttPollPending = true;
         const sn = displayedSN; // 避免轮询途中 displayedSN 变了导致归属错误
         fetch(`/get_rtt_data?sn=${encodeURIComponent(sn)}&since=${rttLineIndex}`)
             .then(r => r.json())
@@ -549,7 +551,8 @@
                 }
                 updateToggleBtn();
             })
-            .catch(err => console.error('poll error:', err));
+            .catch(err => console.error('poll error:', err))
+            .finally(() => { rttPollPending = false; });
     }
 
     function appendRTTLines(lines) {
