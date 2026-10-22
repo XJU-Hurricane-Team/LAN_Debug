@@ -5,7 +5,7 @@
 
 ## 1. 复制工具
 
-将本仓 `client/LAN_Debug/` 复制到业务工程根目录，结果应为：
+从 [LAN_Debug Releases](https://github.com/XJU-Hurricane-Team/LAN_Debug/releases) 下载 `LAN_Debug_client-<版本>.zip`，解压到业务工程的 `LAN_Debug/`。也可将本仓 `client/LAN_Debug/` 复制到业务工程根目录，结果应为：
 
 ```text
 你的工程/
@@ -69,14 +69,20 @@ Linux 使用 `python3`。先编译生成固件，再执行烧录；工具未配�
 启动后 30 秒内没有 GDB 客户端接入会退出并释放探针，包括 VS Code 在前置任务
 就绪后取消调试的情况。看到超时提示后重新按 F5；已接入的调试会话不受此期限限制。
 
+发布包中的 `remote-jlink.example.json` 只是示例，首次使用可复制为 `remote-jlink.json`；已有连接配置不要覆盖。脚本、VERSION 与工具任务可以随工程提交到 Git，队友拉取工程即可使用。
+
 ## 5. 检查与详细说明
 
 在业务工程根目录运行以下命令，Linux 使用 `python3`：
 
 ```text
+python LAN_Debug/jlink_flash.py --version
+python LAN_Debug/jlink_flash.py --check --config LAN_Debug/remote-jlink.json
 python LAN_Debug/jlink_flash.py --program Build/Debug/你的固件.hex --dry-run
 python LAN_Debug/jlink_flash.py --gdb-server --dry-run
 ```
+
+`--check` 只检查本地配置，支持 JSONC 注释和尾逗号，拒绝重复键与大于 4 MiB 的配置；不解析 DNS、不查找 SDK、不连接设备。
 
 `--dry-run` 不执行烧录或启动 GDB Server，但仍会检查配置、解析服务器地址并查找本机工具。
 它通过不代表真实硬件链路已通过。

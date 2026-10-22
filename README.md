@@ -25,7 +25,9 @@
 - [Linux服务端](server/README.md)：服务工作目录为本仓`server/`，部署命令从该目录执行，不从仓库根执行旧的`pack/`路径。
 - `embedded_helper`当前仍通过SDK直连本地/远程J-Link读取变量；远程变量与服务端网页RTT手动互斥，不共享一个采集服务。
 
-源码接管不代表Release下载已迁移。helper现有可信工具目录和下载仍兼容STM32-Template的`debug-lan-v0.1.0-alpha.1/alpha.2`；旧包、工程锁和接口需继续兼容。新发布渠道与包来源迁移另行核验，不仅修改README或仓库名。
+客户端发布统一位于本仓 [Releases](https://github.com/XJU-Hurricane-Team/LAN_Debug/releases)，标签为 `LAN_Debug_client-v<版本>`，附件为 `LAN_Debug_client-<版本>.zip`、`release-manifest.json` 和 `SHA256SUMS`。旧 STM32-Template EXE Release 已撤下，不再作为下载来源。客户端脚本包需要 Python 3.10+ 和外部 SEGGER 软件；服务端独立维护，不随客户端包分发。
+
+客户端版本以 `client/LAN_Debug/VERSION` 为准。提交干净源码后执行 `python -B scripts/package_client.py`，先运行离线测试，再对最终 ZIP 解压副本检查版本及无硬件配置检查；仅打包客户端文件，不携带服务端、Python 运行时或 SEGGER。标签工作流发布经过测试的同一包，拒绝覆盖同名 Release。硬件验收与离线测试分别记录。
 
 ## 后续待讨论方向
 

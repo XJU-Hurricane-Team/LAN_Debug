@@ -9,6 +9,7 @@ import argparse
 import ipaddress
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -16,6 +17,11 @@ import subprocess
 import sys
 import tempfile
 import threading
+
+
+def tool_version() -> str:
+    path = Path(__file__).resolve().with_name("VERSION")
+    return path.read_text(encoding="utf-8").strip() if path.is_file() else "unversioned-source"
 
 
 def resolve_ipv4(host: str) -> str:
@@ -33,8 +39,28 @@ def resolve_ipv4(host: str) -> str:
     return addresses.pop()
 
 
+def read_jsonc(text: str) -> dict:
+    # Match strings first so comment markers and commas inside values stay literal.
+    text = re.sub(r'"(?:\\.|[^"\\])*"|//[^\r\n]*|/\*[\s\S]*?\*/',
+                  lambda match: match[0] if match[0].startswith('"') else re.sub(r'[^\r\n]', ' ', match[0]), text)
+    text = re.sub(r'"(?:\\.|[^"\\])*"|,(?=\s*[}\]])',
+                  lambda match: match[0] if match[0].startswith('"') else '', text)
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Duplicate configuration key: {key}")
+            result[key] = value
+        return result
+
+    return json.loads(text, object_pairs_hook=unique)
+
+
 def read_config(path: Path) -> dict:
-    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    if path.stat().st_size > 4 * 1024 * 1024:
+        raise ValueError("Configuration exceeds 4 MiB")
+    data = read_jsonc(path.read_text(encoding="utf-8-sig"))
     if not isinstance(data, dict):
         raise ValueError("Configuration must be a JSON object")
     for key in ("ServerName", "Device", "Interface"):
@@ -235,6 +261,8 @@ def run_gdb(config: dict, server: Path, address: str, port: int, *, dry_run: boo
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=tool_version())
+    parser.add_argument("--check", action="store_true", help="Validate configuration offline; no DNS or device connection")
     parser.add_argument("--config", type=Path, default=Path(__file__).resolve().with_name("remote-jlink.json"))
     parser.add_argument("--program", type=Path)
     parser.add_argument("--gdb-server", action="store_true", help="Run the local GDB Server for the VS Code debug task")
@@ -245,6 +273,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         config_path = args.config.expanduser().resolve()
         config = read_config(config_path)
+        if args.check:
+            print(json.dumps({"status": "valid", "version": tool_version()}))
+            return 0
         if not args.gdb_server:
             if args.program is None:
                 parser.error("--program is required for flashing")

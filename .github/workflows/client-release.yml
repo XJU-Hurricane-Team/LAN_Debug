@@ -1,0 +1,41 @@
+name: LAN_Debug_client release
+on:
+  push:
+    branches: [main]
+    tags: ['LAN_Debug_client-v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -B scripts/package_client.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LAN_Debug_client
+          path: dist/client/
+  publish:
+    if: startsWith(github.ref, 'refs/tags/LAN_Debug_client-v')
+    needs: client
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: LAN_Debug_client
+          path: package
+      - name: Check tag and publish tested package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION=$(python -c "import json; print(json.load(open('package/release-manifest.json'))['version'])")
+          test "$GITHUB_REF_NAME" = "LAN_Debug_client-v$VERSION"
+          gh release create "$GITHUB_REF_NAME" package/* --repo "$GITHUB_REPOSITORY" --prerelease --title "LAN_Debug_client $VERSION" --notes "客户端脚本包，需要 Python 3.10+ 和 SEGGER J-Link 软件。自动离线测试通过；硬件与纯净 Windows 未验收。"

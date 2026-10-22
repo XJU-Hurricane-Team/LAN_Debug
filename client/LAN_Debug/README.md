@@ -1,6 +1,6 @@
 # LAN_Debug_client
 
-本仓 `client/LAN_Debug/` 是命令行客户端源码及可复制工具目录。将其中的 `LAN_Debug/` 整个文件夹复制到业务工程根目录，所有命令统一使用 `LAN_Debug/` 路径。既有工具 Release 下载尚未迁移，见[仓库说明](../../README.md)。
+本仓 `client/LAN_Debug/` 是命令行客户端源码及可复制工具目录。将其中的 `LAN_Debug/` 整个文件夹复制到业务工程根目录，所有命令统一使用 `LAN_Debug/` 路径。客户端脚本包从 [LAN_Debug Releases](https://github.com/XJU-Hurricane-Team/LAN_Debug/releases) 下载，旧 Template EXE 包已撤下。发布 ZIP 解压到工程的 `LAN_Debug/`，将配置示例另存为 `remote-jlink.json`，已有配置不覆盖。
 
 这是以 G4 模板为可选远程烧录与调试工具包。G4 模板默认使用本地 USB J-Link，需要局域网远程烧录或调试时，按下面步骤接入。示例芯片及 ELF 路径按 G4 配置；用于其他芯片工程时需同步调整并验证。
 
@@ -141,3 +141,7 @@ python LAN_Debug/jlink_flash.py --program Build/Debug/工程名.hex --dry-run
 python LAN_Debug/jlink_flash.py --gdb-server --dry-run
 python -B -m unittest discover -s LAN_Debug/tests -v
 ```
+
+## 发布与离线检查
+
+版本由同目录 VERSION 定义。`python LAN_Debug/jlink_flash.py --version` 查看版本；`python LAN_Debug/jlink_flash.py --check --config LAN_Debug/remote-jlink.json` 只检查本地 JSON/JSONC，不解析 DNS 或连接设备。注释、尾逗号兼容；重复键与超过 4 MiB 的配置拒绝。单独烧录使用 HEX/S19/SREC，ELF/AXF 用于 GDB 源码调试。

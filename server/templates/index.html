@@ -62,6 +62,7 @@
             <div class="flash-command"><code id="flash-command-windows">python "${ProjectRoot}/LAN_Debug/jlink_flash.py" --program "${programFile}"</code></div>
             <div class="flash-command-header"><span>Linux</span><button id="flash-copy-linux" class="btn btn-outline btn-sm" onclick="copyCustomFlash('linux')">复制命令</button></div>
             <div class="flash-command"><code id="flash-command-linux">python3 "${ProjectRoot}/LAN_Debug/jlink_flash.py" --program "${programFile}"</code></div>
+            <p><a href="https://github.com/XJU-Hurricane-Team/LAN_Debug/releases" target="_blank" rel="noopener">下载 LAN_Debug_client 客户端脚本包</a></p>
             <p class="config-note">先将 client/LAN_Debug/ 整个文件夹复制到客户端工程根目录，再将下载的配置保存到 LAN_Debug/remote-jlink.json。此配置用于 EIDE 单独烧录；F5 调试仍选择 Debug: JLINK LAN。不要选择全片擦除，工具未配置该命令。</p>
             <p class="config-note config-validation" id="flash-copy-status" role="status"></p>
         </div>
